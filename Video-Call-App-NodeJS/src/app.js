@@ -20,8 +20,6 @@ let server = https
         console.log('server is running at port 3000')
     });
 
-let io = require( 'socket.io' )( server );
-
 app.use( favicon( path.join( __dirname, 'favicon.ico' ) ) );
 app.use( '/assets', express.static( path.join( __dirname, 'assets' ) ) );
 
@@ -29,7 +27,7 @@ app.get( '/', ( req, res ) => {
     res.sendFile( __dirname + '/index.html' );
 } );
 
-
+let io = require( 'socket.io' )( server );
 io.of( '/stream' ).on( 'connection', stream );
 
 // server.listen( 3000 );
