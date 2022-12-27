@@ -6,21 +6,11 @@ let peers = {};
 // join-room 이벤트 발생 (방과 myPeer 아이디와 함께)
 myPeer.on('open', (id) => socket.emit('join-room', ROOM_ID, id));
 
-let client;
-let channel;
-
 let localStream;
 let remoteStream;
-let peerConnection;
 
-const servers = {
-    iceServers:[
-        {
-            urls:['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302']
-        }
-    ]
-}
-
+let videos = document.getElementById('videos');
+let myVideo = document.createElement('video');
 
 let constraints = {
     video:{
@@ -31,11 +21,46 @@ let constraints = {
 }
 
 let init = async () => {
-    client = await AgoraRTM.createInstance(APP_ID)
-    await client.login({uid, token})
 
-    channel = client.createChannel(roomId)
-    await channel.join()
+    localStream = await navigator.mediaDevices.getUserMedia(constraints)
+    document.getElementById('user-1').srcObject = localStream
+}
+
+navigator.mediaDevices.getUserMedia(constraints)
+    .then((stream) => {
+        addVideoStream(myVideo, stream);
+        myPeer.on('call', (call) => {
+            call.answer(stream);
+            var video = document.createElement('VIDEO');
+            call.on('stream', (userVideoStream) => addVideoStream(video, userVideoStream));
+        });
+        socket.on('user-connected', (userId) => connectToNewUser(userId, stream));
+    });
+socket.on('user-disconnected', (userId) => {
+    if (peers[userId]) peers[userId].close();
+});
+myPeer.on('open', (id) => socket.emit('join-room', ROOM_ID, id));
+
+function connectToNewUser(userId, stream) {
+    var call = myPeer.call(userId, stream);
+    var video = document.createElement('VIDEO');
+    video.autoplay = true;
+    video.setAttribute('playsinline', true);
+    call.on('stream', (userVideoStream) => addVideoStream(video, userVideoStream));
+    call.on('close', () => video.remove());
+    peers[userId] = call;
+}
+function addVideoStream(video, stream) {
+    video.srcObject = stream;
+    video.autoplay = true;
+    video.setAttribute('playsinline', true);
+    video.addEventListener('loadedmetadata', () => video.play());
+    videoGrid.append(video);
+}
+
+
+/*
+let init = async () => {
 
     channel.on('MemberJoined', handleUserJoined)
     channel.on('MemberLeft', handleUserLeft)
@@ -45,6 +70,7 @@ let init = async () => {
     localStream = await navigator.mediaDevices.getUserMedia(constraints)
     document.getElementById('user-1').srcObject = localStream
 }
+*/
  
 
 let handleUserLeft = (MemberId) => {
